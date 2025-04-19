@@ -30,21 +30,23 @@ class LedgerManager:
             raise KeyError("Ledger id {} not found".format(ledger_id))
         return self._ledgers[ledger_id]
 
+    def get_ledgers(self) -> SortedDict[Ledger]:
+        return self._ledgers
+
     def add_invest(self, ledger_id: int, invest_name: str) -> int:
         if ledger_id not in self._ledgers.keys():
             raise KeyError("Ledger id {} not found".format(ledger_id))
         return self._ledgers[ledger_id].add_invest(invest_name)
 
-    def get_invest(self, ledger_id: int, invest_id: int) -> Invest:
+    def get_invest(self, ledger_id: int, invest_id: int):
         if ledger_id not in self._ledgers.keys():
-            raise KeyError("Ledger id {} not found".format(ledger_id))
+            print(f"Ledger id {ledger_id} not found")
+            return None
         if invest_id not in self.get_ledger(ledger_id).get_invest().keys():
-            raise KeyError("Invest id {} not found".format(invest_id))
+            print(f"Invest id {invest_id} not found")
+            return None
 
         return self.get_ledger(ledger_id).get_invest(invest_id)
-
-    def get_invest_xirr(self, ledger_id: int, invest_id: int) -> float:
-        return self.get_ledger(ledger_id).get_invest_xirr(invest_id)
 
     def add_investment_action(self,
                               ledger_id: int,
@@ -54,8 +56,12 @@ class LedgerManager:
                               value: float) -> None:
         if ledger_id not in self._ledgers.keys():
             raise KeyError("Ledger id {} not found".format(ledger_id))
-        return self._ledgers[ledger_id].add_investment_action(invest_id, year, month, day, investment_action_type,
-                                                              value)
+        return self._ledgers[ledger_id].add_investment_action(invest_id,
+                                                              year, month, day,
+                                                              investment_action_type, value)
+
+    def delete_last_action(self,ledger_id:int, invest_id: int) -> None:
+        self._ledgers[ledger_id].delete_last_action(invest_id)
 
     def set_invest_archiving(self, ledger_id: int, invest_id: int, archiving: bool) -> None:
         if ledger_id not in self._ledgers.keys():
@@ -64,6 +70,10 @@ class LedgerManager:
 
     def set_invest_type(self, ledger_id: int, invest_id: int, invest_type: InvestType) -> None:
         self.get_ledger(ledger_id).get_invest(invest_id).set_type(invest_type)
+
+    def get_invest_xirr(self, ledger_id: int, invest_id: int) -> float:
+        return self.get_ledger(ledger_id).get_invest_xirr(invest_id)
+
 
     def update(self) -> None:
         for ledger in self._ledgers.values():

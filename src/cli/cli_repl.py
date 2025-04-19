@@ -13,12 +13,21 @@ CLI_HISTORY_FILE = "./data/cli_history"
 
 
 class CliRepl(cmd.Cmd):
-    prompt = f"{PROJECT_NAME} > "
+    # prompt = f"{PROJECT_NAME} > "
 
     def __init__(self):
         super().__init__()
         self.instance = CliFunc()
         self.available_commands = self._get_commands()
+        print(PROJECT_INFO)
+
+    @property
+    def prompt(self)->str:
+        if self.instance._get_selected_ledger_id() is None:
+            repl_prompt = f"{PROJECT_NAME} $ "
+        else:
+            repl_prompt = f"{PROJECT_NAME} <{self.instance._get_selected_ledger_id()}-{self.instance._get_selected_ledger_name()}> $ "
+        return repl_prompt
 
     def _get_commands(self) -> List[str]:
         return [
@@ -64,8 +73,7 @@ class CliRepl(cmd.Cmd):
             method = getattr(self.instance, cmd_name)
             try:
                 args = self._parse_args(method, parts[1:])
-                result = method(*args)
-                print("Result: ", result)
+                result = method(**args)
             except Exception as e:
                 print(f"Params Error: {e}")
         else:
@@ -73,7 +81,7 @@ class CliRepl(cmd.Cmd):
 
     def _parse_args(self, method, raw_args):
         sig = inspect.signature(method)
-        params = list(sig.parameters.values())[1:]
+        params = list(sig.parameters.values())
         args = {}
 
         for param, value in zip(params, raw_args):

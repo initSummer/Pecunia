@@ -72,6 +72,10 @@ class Invest:
         action = InvestmentAction(time, investment_action_type, value)
         self._actions[date].add(action)
 
+    def delete_last_action(self):
+        last_day = self._actions.keys()[-1]
+        self._actions[last_day].pop(-1)
+
     def update(self) -> None:
         if len(self._actions) == 0:
             return

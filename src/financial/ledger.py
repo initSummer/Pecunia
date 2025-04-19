@@ -1,6 +1,7 @@
 from .invest import Invest
 from .investment_action import InvestmentActionType
 from .dict_accessors import cum_dict_accessors, daily_dict_accessors
+from .financial_types import InvestType
 import src.util
 from sortedcontainers import SortedDict, SortedList
 import datetime
@@ -71,7 +72,37 @@ class Ledger:
                               value: float) -> None:
         self._invests[invest_id].add_action(year, month, day, investment_action_type, value)
 
+    def delete_last_action(self, invest_id: int) -> None:
+        self._invests[invest_id].delete_last_action()
+
     def update(self) -> None:
+        # sort invest
+        temp_invests = list(self._invests.values())
+        self._invests.clear()
+        sort_type = {}
+        for invest_type in InvestType:
+            sort_type[invest_type] = []
+            for invest in temp_invests:
+                if invest.get_type() == invest_type and not invest.get_archiving():
+                    sort_type[invest_type].append(invest)
+        archiving_invests = []
+        for invest in temp_invests:
+            if invest.get_archiving():
+                archiving_invests.append(invest)
+
+        id_counter = 0
+        for invest_type in InvestType:
+            sort_type[invest_type] = sorted(sort_type[invest_type], key=lambda invest: invest.get_value(), reverse=True)
+            for invest in sort_type[invest_type]:
+                self._invests[id_counter] = invest
+                self._invests[id_counter].set_id(id_counter)
+                id_counter += 1
+        archiving_invests = sorted(archiving_invests, key=lambda invest: invest.get_value(), reverse=True)
+        for invest in archiving_invests:
+            self._invests[id_counter] = invest
+            self._invests[id_counter].set_id(id_counter)
+            id_counter += 1
+
         # step 1: get daily return
         #         get cashflow
         for invest in self._invests.values():
