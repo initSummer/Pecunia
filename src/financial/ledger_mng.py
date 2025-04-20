@@ -1,4 +1,5 @@
 from sortedcontainers import SortedDict
+import datetime
 
 from .financial_types import InvestType, InvestmentActionType
 from .ledger import Ledger
@@ -71,8 +72,11 @@ class LedgerManager:
     def set_invest_type(self, ledger_id: int, invest_id: int, invest_type: InvestType) -> None:
         self.get_ledger(ledger_id).get_invest(invest_id).set_type(invest_type)
 
-    def get_invest_xirr(self, ledger_id: int, invest_id: int) -> float:
-        return self.get_ledger(ledger_id).get_invest_xirr(invest_id)
+    def get_invest_xirr(self, ledger_id: int, invest_id: int, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        return self.get_ledger(ledger_id).get_invest_xirr(invest_id, start_day, end_day)
+
+    def get_ledger_xirr(self, ledger_id: int, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        return self.get_ledger(ledger_id).xirr(start_day, end_day,)
 
 
     def update(self) -> None:

@@ -5,7 +5,7 @@ import json
 from .financial_types import InvestType, InvestmentActionType
 from .investment_action import InvestmentAction
 from .dict_accessors import cum_dict_accessors, daily_dict_accessors
-import src.util
+import src.util as util
 
 
 @cum_dict_accessors('_value_line', '_return_line')
@@ -125,8 +125,17 @@ class Invest:
         for date, value in self._value_line.items():
             print(f"{date} {value}")
 
-    def xirr(self) -> float:
-        return src.util.xirr(self._cashflow)
+    def xirr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        cashflow = self._cashflow
+        if start_day is not None:
+            cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k >= start_day})
+        if end_day is not None:
+            cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k <= end_day})
+
+
+        return util.xirr(cashflow)
+
+
 
     def print(self) -> None:
         print(f"{self.get_owner_ledger_id()}-{self.get_id()}-{self.get_name()}")

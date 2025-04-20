@@ -71,11 +71,11 @@ class CliRepl(cmd.Cmd):
         cmd_name = parts[0]
         if cmd_name in self.available_commands:
             method = getattr(self.instance, cmd_name)
-            try:
-                args = self._parse_args(method, parts[1:])
-                result = method(**args)
-            except Exception as e:
-                print(f"Params Error: {e}")
+            # try:
+            args = self._parse_args(method, parts[1:])
+            result = method(**args)
+            # except Exception as e:
+            #     print(f"Params Error: {e}")
         else:
             print(f"Unknown command: {cmd_name}")
 

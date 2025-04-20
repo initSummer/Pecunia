@@ -113,19 +113,24 @@ class CliFunc:
 
     def _print_ledger_title(self, ledger_id: int):
         ledger = self._ledger_mng.get_ledger(ledger_id)
-        last_date = ledger.get_daily_return_line().keys()[-1]
+        start_date = ledger.get_start_date()
+        last_date = ledger.get_end_date()
         print(f"|Ledger: {ledger.get_name()}, ledger_id: {ledger.get_id()}")
         print(f"|today: {last_date}, daily_return: {ledger.get_daily_return():.2f}")
         print(f"|value: {ledger.get_value():.2f}, return: {ledger.get_return():.2f}")
-        print(f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate: {ledger.growth_rate(None, None) * 100:.2f}%")
+        if last_date - datetime.timedelta(days=365) >= start_date:
+            print(f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate(Year): {ledger.growth_rate(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%")
+        else:
+            print(f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate: {ledger.growth_rate() * 100:.2f}%")
 
-    def _print_invest(self, ledger_id: int, invest_id: int):
+    def _print_invest(self, ledger_id: int, invest_id: int, start_day: datetime.date = None, end_day: datetime.date = None):
         invest = self._ledger_mng.get_invest(ledger_id, invest_id)
         if invest is None:
             return
+
         print(f"{invest.get_owner_ledger_id()}-{invest.get_id()}-{invest.get_name()}")
         print(f"{"date":10s}{"value":>15s}{"return":>15s}{"daily_return":>15s}")
-        for date in invest.get_value_line().keys():
+        for date in invest.get_value_line().keys()[-30:]:
             print(
                 f"{date}{invest.get_value(date):>15.2f}{invest.get_return(date):>15.2f}{invest.get_daily_return(date):>15.2f}")
 
@@ -178,6 +183,14 @@ class CliFunc:
         data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-30:]
         self._draw_value_return(dates, data_value, data_return)
 
+    def draw_return(self):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().keys()[-30:]
+        data_return= self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-30:]
+        self._drawer(dates, data_return)
+
     def _draw_value_return(self, dates, values, returns):
         fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -203,10 +216,7 @@ class CliFunc:
         fig.tight_layout()
         plt.show()
 
-    def _drawer(self, data: SortedDict[datetime.date, float], line_type: str):
-        dates = list(data.keys())
-        values = list(data.values())
-
+    def _drawer(self, dates, values, line_type: str = "line"):
         fig, ax = plt.subplots(figsize=(12, 6))
 
         if line_type == "line":

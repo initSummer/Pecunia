@@ -2,7 +2,7 @@ from .invest import Invest
 from .investment_action import InvestmentActionType
 from .dict_accessors import cum_dict_accessors, daily_dict_accessors
 from .financial_types import InvestType
-import src.util
+import src.util as util
 from sortedcontainers import SortedDict, SortedList
 import datetime
 import json
@@ -34,6 +34,12 @@ class Ledger:
     def set_name(self, name: str):
         self._name = name
 
+    def get_start_date(self):
+        return self._value_line.keys()[0]
+
+    def get_end_date(self):
+        return self._value_line.keys()[-1]
+
     def get_invest(self, invest_id: int = None):
         if invest_id is None:
             return self._invests
@@ -43,8 +49,8 @@ class Ledger:
     def get_invest_list(self):
         return self._invests.values()
 
-    def get_invest_xirr(self, invest_id: int) -> float:
-        return self.get_invest(invest_id).xirr()
+    def get_invest_xirr(self, invest_id: int, start_day: datetime = None, end_day: datetime = None) -> float:
+        return self.get_invest(invest_id).xirr(start_day, end_day)
 
     def add_invest(self, invest_name: str) -> int:
         invest = Invest(invest_name)
@@ -129,18 +135,28 @@ class Ledger:
             ledger_return += self._daily_return_line[date]
             self._return_line[date] = ledger_return
 
-    def xirr(self) -> float:
-        return src.util.xirr(self._cashflow)
+    def xirr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        cashflow = self._cashflow
+        if start_day is not None:
+            cashflow = SortedDict({k: v for k,v in cashflow.items() if k >= start_day})
+            cashflow[start_day] = -self.get_value(start_day)
+        if end_day is not None:
+            cashflow = SortedDict({k: v for k,v in cashflow.items() if k <= end_day})
+            cashflow[end_day] = self.get_value(end_day)
 
-    def growth_rate(self, start_time: datetime.date, end_time: datetime.date) -> float:
+        return util.xirr(cashflow)
+
+    def growth_rate(self, start_time: datetime.date = None, end_time: datetime.date = None) -> float:
         if start_time is None and end_time is None:
             origin_value = self._value_line.values()[0]
             delta_value = self._value_line.values()[-1] - self._value_line.values()[0]
             delta_years = (self._value_line.keys()[-1] - self._value_line.keys()[0]).days / 365.0
             return delta_value / origin_value / delta_years
         elif start_time is not None and end_time is not None:
-            if start_time not in self._value_line or end_time not in self._value_line:
-                raise KeyError
+            if start_time not in self._value_line:
+                start_time = self.get_start_date()
+            if end_time not in self._value_line:
+                end_time = self.get_end_date()
             origin_value = self._value_line[start_time]
             delta_value = self._value_line[end_time] - self._value_line[start_time]
             delta_years = (end_time - start_time).days / 365.0

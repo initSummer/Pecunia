@@ -1,4 +1,20 @@
 from sortedcontainers import SortedList, SortedDict
+import datetime
+
+from bisect import bisect_left
+
+def get_index(sorted_dict: SortedDict, tar_date: datetime.date):
+    dates = list(sorted_dict.keys())
+
+    if not dates:
+        return None
+
+    pos = bisect_left(dates, tar_date)
+
+    if pos < len(dates and dates[pos] == tar_date):
+        return pos
+
+    return None
 
 
 def sorted_dict_to_std_dict(sorted_dict: SortedDict) -> dict:
