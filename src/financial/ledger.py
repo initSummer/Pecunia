@@ -144,13 +144,20 @@ class Ledger:
     def xirr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
         cashflow = self._cashflow
         if start_day is not None:
-            cashflow = SortedDict({k: v for k, v in cashflow.items() if k >= start_day})
-            cashflow[start_day] = -self.get_value(start_day)
+            if start_day < self._value_line.keys()[0]:
+                return float('nan')
+            else:
+                cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k >= start_day})
+                cashflow[start_day] += -self.get_value(start_day)
         if end_day is not None:
-            cashflow = SortedDict({k: v for k, v in cashflow.items() if k <= end_day})
-            cashflow[end_day] = self.get_value(end_day)
+            if end_day > self._value_line.keys()[-1]:
+                return float('nan')
+            else:
+                cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k <= end_day})
+                cashflow[end_day] += self.get_value(end_day)
 
         return util.xirr(cashflow)
+
 
     def growth_rate(self, start_time: datetime.date = None, end_time: datetime.date = None) -> float:
         if start_time is None and end_time is None:

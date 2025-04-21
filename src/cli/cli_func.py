@@ -119,18 +119,27 @@ class CliFunc:
         print(f"|today: {last_date}, daily_return: {ledger.get_daily_return():.2f}")
         print(f"|value: {ledger.get_value():.2f}, return: {ledger.get_return():.2f}")
         if last_date - datetime.timedelta(days=365) >= start_date:
-            print(f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate(Year): {ledger.growth_rate(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%")
+            print(
+                f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate(Year): {ledger.growth_rate(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%")
         else:
             print(f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate: {ledger.growth_rate() * 100:.2f}%")
 
-    def _print_invest(self, ledger_id: int, invest_id: int, start_day: datetime.date = None, end_day: datetime.date = None):
+    def _print_invest(self, ledger_id: int, invest_id: int, start_day: datetime.date = None,
+                      end_day: datetime.date = None):
         invest = self._ledger_mng.get_invest(ledger_id, invest_id)
         if invest is None:
             return
 
-        print(f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
+        end_day = invest.get_value_line().keys()[-1]
+        print(
+            f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
+        xirr_str = f"xirr: {invest.xirr() * 100:.2f}%\n"
+        xirr_str += f"    week: {invest.xirr(end_day - datetime.timedelta(days=7), end_day) * 100:.3f}%"
+        xirr_str += f", month: {invest.xirr(end_day - datetime.timedelta(days=30), end_day) * 100:.3f}%"
+        xirr_str += f", year: {invest.xirr(end_day - datetime.timedelta(days=365), end_day) * 100:.3f}%"
+        print(f"{xirr_str}")
         print(f"{"date":10s}{"value":>15s}{"return":>15s}{"daily_return":>15s}")
-        for date in invest.get_value_line().keys()[-30:]:
+        for date in invest.get_value_line().keys()[-7:]:
             print(
                 f"{date}{invest.get_value(date):>15.2f}{invest.get_return(date):>15.2f}{invest.get_daily_return(date):>15.2f}")
 
@@ -188,8 +197,16 @@ class CliFunc:
             print("No ledger selected")
             return
         dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().keys()[-30:]
-        data_return= self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-30:]
+        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-30:]
         self._drawer(dates, data_return)
+
+    def draw_daily_return(self):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().keys()[-30:]
+        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().values()[-30:]
+        self._drawer(dates, data_return, "bar")
 
     def _draw_value_return(self, dates, values, returns):
         fig, ax = plt.subplots(figsize=(12, 6))
