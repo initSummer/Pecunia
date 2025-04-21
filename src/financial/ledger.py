@@ -82,6 +82,8 @@ class Ledger:
         self._invests[invest_id].delete_last_action()
 
     def update(self) -> None:
+        for invest in self._invests.values():
+            invest.set_owner_ledger_id(self._id)
         # sort invest
         temp_invests = list(self._invests.values())
         self._invests.clear()
@@ -111,6 +113,10 @@ class Ledger:
 
         # step 1: get daily return
         #         get cashflow
+        self._daily_return_line.clear()
+        self._cashflow.clear()
+        self._value_line.clear()
+        self._return_line.clear()
         for invest in self._invests.values():
             for date, value in invest.get_daily_return_line().items():
                 if not date in self._daily_return_line:
@@ -138,10 +144,10 @@ class Ledger:
     def xirr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
         cashflow = self._cashflow
         if start_day is not None:
-            cashflow = SortedDict({k: v for k,v in cashflow.items() if k >= start_day})
+            cashflow = SortedDict({k: v for k, v in cashflow.items() if k >= start_day})
             cashflow[start_day] = -self.get_value(start_day)
         if end_day is not None:
-            cashflow = SortedDict({k: v for k,v in cashflow.items() if k <= end_day})
+            cashflow = SortedDict({k: v for k, v in cashflow.items() if k <= end_day})
             cashflow[end_day] = self.get_value(end_day)
 
         return util.xirr(cashflow)

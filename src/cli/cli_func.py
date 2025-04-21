@@ -128,7 +128,7 @@ class CliFunc:
         if invest is None:
             return
 
-        print(f"{invest.get_owner_ledger_id()}-{invest.get_id()}-{invest.get_name()}")
+        print(f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
         print(f"{"date":10s}{"value":>15s}{"return":>15s}{"daily_return":>15s}")
         for date in invest.get_value_line().keys()[-30:]:
             print(
@@ -140,7 +140,7 @@ class CliFunc:
         print(DELIVER)
         self._print_ledger_title(ledger_id)
         print(DELIVER)
-        print(f"|{"id":^5}|{"value":^11}|{"return":^9}|{"xirr":^}|{"today":^9}|{" name"}")
+        print(f"|{"id":^5}|{"value":^11}|{"return":^9}|{"xirr":^9}|{"today":^9}|{" name"}")
         print(DELIVER)
 
         def invest_print_list(invest) -> str:
