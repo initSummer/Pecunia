@@ -134,7 +134,7 @@ class Invest:
                 cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k >= start_day})
                 if start_day not in cashflow:
                     cashflow[start_day] = 0.0
-                cashflow[start_day] += -self.get_value(start_day)
+                cashflow[start_day] = -self.get_value(start_day)
         if end_day is not None:
             if end_day > self._value_line.keys()[-1]:
                 return float('nan')
@@ -142,11 +142,19 @@ class Invest:
                 cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k <= end_day})
                 if end_day not in cashflow:
                     cashflow[end_day] = 0.0
-                cashflow[end_day] += self.get_value(end_day)
+                if end_day != self._value_line.keys()[-1]:
+                    cashflow[end_day] = self.get_value(end_day)
+        # print("----------------------------------")
+        # print(start_day, end_day)
+        # for d, v in cashflow.items():
+        #     print(f"{d} {v}")
+        # print(cashflow)
+        # print("----------------------------------")
+
+        if util.xirr(cashflow) is None:
+            print("Error")
 
         return util.xirr(cashflow)
-
-
 
     def print(self) -> None:
         print(f"{self.get_owner_ledger_id()}-{self.get_id()}-{self.get_name()}")

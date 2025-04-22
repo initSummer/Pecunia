@@ -63,6 +63,11 @@ class CliFunc:
             print("No ledger selected")
             return
         self._print_invest(self._selected_ledger_id, invest_id)
+    def show_invest_action(self, invest_id: int):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        self._print_invest_action(self._selected_ledger_id, invest_id)
 
     def add_invest(self, invest_name: str):
         if not self._check_ledger():
@@ -124,8 +129,8 @@ class CliFunc:
         else:
             print(f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate: {ledger.growth_rate() * 100:.2f}%")
 
-    def _print_invest(self, ledger_id: int, invest_id: int, start_day: datetime.date = None,
-                      end_day: datetime.date = None):
+    def _print_invest(self, ledger_id: int, invest_id: int,
+                      start_day: datetime.date = None, end_day: datetime.date = None):
         invest = self._ledger_mng.get_invest(ledger_id, invest_id)
         if invest is None:
             return
@@ -142,6 +147,26 @@ class CliFunc:
         for date in invest.get_value_line().keys()[-7:]:
             print(
                 f"{date}{invest.get_value(date):>15.2f}{invest.get_return(date):>15.2f}{invest.get_daily_return(date):>15.2f}")
+        print(f"{DELIVER}")
+
+    def _print_invest_action(self, ledger_id: int, invest_id: int):
+        invest = self._ledger_mng.get_invest(ledger_id, invest_id)
+        if invest is None:
+            return
+
+        print(f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
+        i = 0
+        action_str = ""
+        for date, actions in reversed(invest._actions.items()):
+            for action in reversed(actions):
+                action_str = f"{date}, {action.type}, {action.value}" + action_str
+                i += 1
+                if i >= 30:
+                    break
+                action_str = "\n" + action_str
+            if i >= 30:
+                break
+        print(action_str)
 
     def _print_ledger(self, ledger_id: int):
         ledger = self._ledger_mng.get_ledger(ledger_id)

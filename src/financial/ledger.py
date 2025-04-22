@@ -161,21 +161,20 @@ class Ledger:
 
     def growth_rate(self, start_time: datetime.date = None, end_time: datetime.date = None) -> float:
         if start_time is None and end_time is None:
-            origin_value = self._value_line.values()[0]
-            delta_value = self._value_line.values()[-1] - self._value_line.values()[0]
-            delta_years = (self._value_line.keys()[-1] - self._value_line.keys()[0]).days / 365.0
-            return delta_value / origin_value / delta_years
+            start_time = self._value_line.keys()[0]
+            end_time = self._value_line.keys()[-1]
         elif start_time is not None and end_time is not None:
             if start_time not in self._value_line:
                 start_time = self.get_start_date()
             if end_time not in self._value_line:
                 end_time = self.get_end_date()
-            origin_value = self._value_line[start_time]
-            delta_value = self._value_line[end_time] - self._value_line[start_time]
-            delta_years = (end_time - start_time).days / 365.0
-            return delta_value / origin_value / delta_years
         else:
             raise KeyError
+
+        origin_value = self._value_line[start_time]
+        delta_value = self._value_line[end_time] - self._value_line[start_time]
+        delta_years = (end_time - start_time).days / 365.0
+        return delta_value / origin_value / delta_years
 
     def convert_to_json(self):
         invests = json.dumps([invest.convert_to_dict() for invest in self._invests.values()])
