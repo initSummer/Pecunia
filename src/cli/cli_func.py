@@ -46,9 +46,7 @@ class CliFunc:
             self._selected_ledger_id = ledger_id
             self._selected_ledger_name = self._ledger_mng.get_ledger(ledger_id).get_name()
             print(f"Selected ledger <{self._selected_ledger_name}>")
-            print(DELIVER)
-            self._print_ledger_title(ledger_id)
-            print(DELIVER)
+            self._print_ledger(ledger_id)
         else:
             print(f"No such ledger, id {ledger_id}")
 
@@ -63,17 +61,18 @@ class CliFunc:
             print("No ledger selected")
             return
         self._print_invest(self._selected_ledger_id, invest_id)
+
     def show_invest_action(self, invest_id: int):
         if not self._check_ledger():
             print("No ledger selected")
             return
         self._print_invest_action(self._selected_ledger_id, invest_id)
 
-    def add_invest(self, invest_name: str):
+    def add_invest(self, invest_name: str, invest_type_name: str):
         if not self._check_ledger():
             print("No ledger selected")
             return
-        self._ledger_mng.add_invest(self._selected_ledger_id, invest_name)
+        self._ledger_mng.add_invest(self._selected_ledger_id, invest_name, invest_type_name)
 
     def update(self, invest_id: int, value: float):
         self._add_today_action(invest_id, "UPDATE", value)
@@ -123,11 +122,16 @@ class CliFunc:
         print(f"|Ledger: {ledger.get_name()}, ledger_id: {ledger.get_id()}")
         print(f"|today: {last_date}, daily_return: {ledger.get_daily_return():.2f}")
         print(f"|value: {ledger.get_value():.2f}, return: {ledger.get_return():.2f}")
-        if last_date - datetime.timedelta(days=365) >= start_date:
-            print(
-                f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate(Year): {ledger.growth_rate(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%")
-        else:
-            print(f"|xirr: {ledger.xirr() * 100:.2f}%, growth rate: {ledger.growth_rate() * 100:.2f}%")
+        xirr = f"|xirr: {ledger.xirr() * 100:.2f}%\n"
+        xirr += f"|    week: {ledger.xirr(last_date - datetime.timedelta(days=7), last_date) * 100:.2f}%, "
+        xirr += f"month: {ledger.xirr(last_date - datetime.timedelta(days=30), last_date) * 100:.2f}%, "
+        xirr += f"year: {ledger.xirr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
+        print(xirr)
+        tagr = f"|tagr: {ledger.tagr() * 100:.2f}%\n"
+        tagr += f"|    week: {ledger.tagr(last_date - datetime.timedelta(days=7), last_date) * 100:.2f}%, "
+        tagr += f"month: {ledger.tagr(last_date - datetime.timedelta(days=30), last_date) * 100:.2f}%, "
+        tagr += f"year: {ledger.tagr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
+        print(tagr)
 
     def _print_invest(self, ledger_id: int, invest_id: int,
                       start_day: datetime.date = None, end_day: datetime.date = None):
@@ -154,12 +158,13 @@ class CliFunc:
         if invest is None:
             return
 
-        print(f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
+        print(
+            f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
         i = 0
         action_str = ""
         for date, actions in reversed(invest._actions.items()):
             for action in reversed(actions):
-                action_str = f"{date}, {action.type}, {action.value}" + action_str
+                action_str = f"{date}, {action.type.value:>7}, {action.value:>10}" + action_str
                 i += 1
                 if i >= 30:
                     break
@@ -191,18 +196,19 @@ class CliFunc:
             if invest_type_value == 0:
                 continue
             print(
-                f"|{'-' * 5} {invest_type.name}, {invest_type_value:.2f}, {invest_type_value / ledger.get_value() * 100:.2f}%")
+                f"|{'-' * 5} {invest_type.name:>10}, {invest_type_value:>11.2f}, {invest_type_value / ledger.get_value() * 100:>7.2f}%")
             for invest in ledger.get_invest_list():
                 if invest.get_type() not in InvestType:
                     raise (ValueError, "Invest type unknown")
                 if invest.get_type() == invest_type and not invest.get_archiving():
                     print(invest_print_list(invest))
+
         has_archiving = False
         for invest in ledger.get_invest_list():
             if invest.get_archiving():
                 has_archiving = True
         if has_archiving:
-            print(f"|{'-' * 5} Archiving")
+            print(f"|{'-' * 5} {"Archiving":>10}")
             for invest in ledger.get_invest_list():
                 if invest.get_archiving():
                     print(invest_print_list(invest))

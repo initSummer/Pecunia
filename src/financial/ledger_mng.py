@@ -34,10 +34,10 @@ class LedgerManager:
     def get_ledgers(self) -> SortedDict[Ledger]:
         return self._ledgers
 
-    def add_invest(self, ledger_id: int, invest_name: str) -> int:
+    def add_invest(self, ledger_id: int, invest_name: str, invest_type_name: str) -> int:
         if ledger_id not in self._ledgers.keys():
             raise KeyError("Ledger id {} not found".format(ledger_id))
-        return self._ledgers[ledger_id].add_invest(invest_name)
+        return self._ledgers[ledger_id].add_invest(invest_name, invest_type_name)
 
     def get_invest(self, ledger_id: int, invest_id: int):
         if ledger_id not in self._ledgers.keys():
@@ -77,6 +77,9 @@ class LedgerManager:
 
     def get_ledger_xirr(self, ledger_id: int, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
         return self.get_ledger(ledger_id).xirr(start_day, end_day,)
+
+    def get_ledger_tagr(self, ledger_id: int, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        return self.get_ledger(ledger_id).tagr(start_day, end_day,)
 
 
     def update(self) -> None:

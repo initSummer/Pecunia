@@ -80,6 +80,11 @@ class Invest:
         if len(self._actions) == 0:
             return
 
+        self._value_line.clear()
+        self._return_line.clear()
+        self._daily_return_line.clear()
+        self._cashflow.clear()
+
         dates = self._actions.keys()
         start_date = dates[0]
         end_date = dates[-1]
@@ -126,9 +131,12 @@ class Invest:
             print(f"{date} {value}")
 
     def xirr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        if start_day and end_day and start_day >= end_day:
+            return float('nan')
+
         cashflow = self._cashflow
         if start_day is not None:
-            if start_day < self._value_line.keys()[0]:
+            if start_day < self._value_line.keys()[0] or start_day > self._value_line.keys()[-1]:
                 return float('nan')
             else:
                 cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k >= start_day})
@@ -136,7 +144,7 @@ class Invest:
                     cashflow[start_day] = 0.0
                 cashflow[start_day] = -self.get_value(start_day)
         if end_day is not None:
-            if end_day > self._value_line.keys()[-1]:
+            if end_day > self._value_line.keys()[-1] or end_day < self._value_line.keys()[0]:
                 return float('nan')
             else:
                 cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k <= end_day})
@@ -144,15 +152,6 @@ class Invest:
                     cashflow[end_day] = 0.0
                 if end_day != self._value_line.keys()[-1]:
                     cashflow[end_day] = self.get_value(end_day)
-        # print("----------------------------------")
-        # print(start_day, end_day)
-        # for d, v in cashflow.items():
-        #     print(f"{d} {v}")
-        # print(cashflow)
-        # print("----------------------------------")
-
-        if util.xirr(cashflow) is None:
-            print("Error")
 
         return util.xirr(cashflow)
 

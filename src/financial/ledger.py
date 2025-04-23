@@ -52,7 +52,12 @@ class Ledger:
     def get_invest_xirr(self, invest_id: int, start_day: datetime = None, end_day: datetime = None) -> float:
         return self.get_invest(invest_id).xirr(start_day, end_day)
 
-    def add_invest(self, invest_name: str) -> int:
+    def add_invest(self, invest_name: str, invest_type_name: str) -> int:
+        try:
+            invest_type = InvestType(invest_type_name)
+        except ValueError as e:
+            print(f"Error: {e}")
+            return -1
         invest = Invest(invest_name)
         invest_id = 0
         while invest_id in self._invests.keys():
@@ -60,6 +65,9 @@ class Ledger:
         self._invests[invest_id] = invest
         self._invests[invest_id].set_id(invest_id)
         self._invests[invest_id].set_owner_ledger_id(self._id)
+        self._invests[invest_id].set_type(invest_type)
+
+        self.update()
 
         return invest_id
 
@@ -142,22 +150,63 @@ class Ledger:
             self._return_line[date] = ledger_return
 
     def xirr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        if start_day and end_day and start_day >= end_day:
+            return float('nan')
+
         cashflow = self._cashflow
         if start_day is not None:
-            if start_day < self._value_line.keys()[0]:
+            if start_day < self._value_line.keys()[0] or start_day > self._value_line.keys()[-1]:
                 return float('nan')
             else:
                 cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k >= start_day})
-                cashflow[start_day] += -self.get_value(start_day)
+                if start_day not in cashflow:
+                    cashflow[start_day] = 0.0
+                cashflow[start_day] = -self.get_value(start_day)
         if end_day is not None:
-            if end_day > self._value_line.keys()[-1]:
+            if end_day > self._value_line.keys()[-1] or end_day < self._value_line.keys()[0]:
                 return float('nan')
             else:
                 cashflow = SortedDict({k: cashflow[k] for k in cashflow.keys() if k <= end_day})
-                cashflow[end_day] += self.get_value(end_day)
+                if end_day not in cashflow:
+                    cashflow[end_day] = 0.0
+                if end_day != self._value_line.keys()[-1]:
+                    cashflow[end_day] = self.get_value(end_day)
+        # if end_day and start_day:
+        #     if (end_day - start_day).days <= 7:
+        #         print(start_day, end_day)
+        #         for date, value in cashflow.items():
+        #             print(date, value)
 
         return util.xirr(cashflow)
 
+    def tagr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        if start_day is not None:
+            if start_day < self._value_line.keys()[0] or start_day > self._value_line.keys()[-1]:
+                return float('nan')
+        else:
+            start_day = self._value_line.keys()[0]
+
+        if end_day is not None:
+            if end_day > self._value_line.keys()[-1] or end_day < self._value_line.keys()[0]:
+                return float('nan')
+        else:
+            end_day = self._value_line.keys()[-1]
+
+        if end_day < start_day:
+            return float('nan')
+
+        tagr = (self._value_line[end_day] - self._value_line[start_day]) / self._value_line[start_day] / (
+                end_day - start_day).days * 365
+
+        return tagr
+
+    def daily_return_rate(self, date: datetime.date = None) -> float:
+        if date is None:
+            date = self._value_line.keys()[-1]
+        elif date <= self._value_line.keys()[0] or date > self._value_line.keys()[-1]:
+            return 0
+
+        daily_return_rate = self._daily_return_line[date] / self._value_line[date - datetime.timedelta(days=1)]
 
     def growth_rate(self, start_time: datetime.date = None, end_time: datetime.date = None) -> float:
         if start_time is None and end_time is None:
