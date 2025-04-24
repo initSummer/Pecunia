@@ -195,6 +195,9 @@ class Ledger:
         if end_day < start_day:
             return float('nan')
 
+        if self._value_line[start_day] == 0:
+            return float('nan')
+
         tagr = (self._value_line[end_day] - self._value_line[start_day]) / self._value_line[start_day] / (
                 end_day - start_day).days * 365
 

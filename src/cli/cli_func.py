@@ -1,6 +1,8 @@
 import inspect
 from tkinter import BooleanVar
 
+import matplotlib
+
 from src.financial import *
 from src.financial import ledger_mng, InvestmentAction
 from src.financial.ledger_mng import LedgerManager
@@ -29,11 +31,7 @@ class CliFunc:
         self._selected_ledger_id = None
         self._selected_ledger_name = None
 
-    def _get_selected_ledger_id(self):
-        return self._selected_ledger_id
-
-    def _get_selected_ledger_name(self):
-        return self._selected_ledger_name
+        plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
 
     def show_all(self) -> None:
         for ledger_id in self._ledger_mng.get_ledgers().keys():
@@ -56,17 +54,17 @@ class CliFunc:
         else:
             self._print_ledger(self._selected_ledger_id)
 
-    def show_invest(self, invest_id: int):
+    def show_invest(self, invest_id: int, log_num: int = None):
         if not self._check_ledger():
             print("No ledger selected")
             return
-        self._print_invest(self._selected_ledger_id, invest_id)
+        self._print_invest(self._selected_ledger_id, invest_id, log_num=log_num)
 
-    def show_invest_action(self, invest_id: int):
+    def show_invest_action(self, invest_id: int, log_num: int = None):
         if not self._check_ledger():
             print("No ledger selected")
             return
-        self._print_invest_action(self._selected_ledger_id, invest_id)
+        self._print_invest_action(self._selected_ledger_id, invest_id, log_num=log_num)
 
     def add_invest(self, invest_name: str, invest_type_name: str):
         if not self._check_ledger():
@@ -99,6 +97,88 @@ class CliFunc:
         self._ledger_mng.delete_last_action(self._selected_ledger_id, invest_id)
         self._ledger_mng.update()
         self._dump_data()
+
+    def draw(self, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        if point_num is None:
+            point_num = 30
+        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().keys()[-point_num:]
+        data_value = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().values()[-point_num:]
+        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-point_num:]
+        self._draw_value_return(dates, data_value, data_return)
+
+    def draw_all(self, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+
+        if point_num is None:
+            point_num = 30
+
+        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().keys()[-point_num:]
+        data_values = {}
+        data_values[self._selected_ledger_name] = self._ledger_mng.get_ledger(
+            self._selected_ledger_id).get_value_line().values()[-point_num:]
+        for invest in self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest_list():
+            # if invest.get_archiving():
+            #     continue
+            invest_name = invest.get_name()
+            invest_value_line = {}
+            for date in dates:
+                invest_value_line[date] = invest.get_value(date)
+            data_values[invest_name] = invest_value_line.values()
+        self._draw_all(dates, data_values)
+
+    def draw_all_return(self, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+
+        if point_num is None:
+            point_num = 30
+
+        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().keys()[-point_num:]
+        data_values = {}
+        data_values[self._selected_ledger_name] = self._ledger_mng.get_ledger(
+            self._selected_ledger_id).get_return_line().values()[-point_num:]
+        for invest in self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest_list():
+            # if invest.get_archiving():
+            #     continue
+            invest_name = invest.get_name()
+            invest_value_line = {}
+            for date in dates:
+                invest_value_line[date] = invest.get_return(date)
+            data_values[invest_name] = invest_value_line.values()
+        self._draw_all(dates, data_values)
+
+    def draw_return(self, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        if point_num is None:
+            point_num = 30
+        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().keys()[-point_num:]
+        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-point_num:]
+        self._drawer(dates, data_return)
+
+    def draw_daily_return(self, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        if point_num is None:
+            point_num = 30
+        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().keys()[-point_num:]
+        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().values()[
+                      -point_num:]
+        self._drawer(dates, data_return, "bar")
+
+    def _get_selected_ledger_id(self):
+        return self._selected_ledger_id
+
+    def _get_selected_ledger_name(self):
+        return self._selected_ledger_name
 
     def _add_today_action(self, invest_id: int, action_type_name: str, value: float):
         today = datetime.datetime.now().date()
@@ -133,7 +213,7 @@ class CliFunc:
         tagr += f"year: {ledger.tagr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
         print(tagr)
 
-    def _print_invest(self, ledger_id: int, invest_id: int,
+    def _print_invest(self, ledger_id: int, invest_id: int, log_num: int = None,
                       start_day: datetime.date = None, end_day: datetime.date = None):
         invest = self._ledger_mng.get_invest(ledger_id, invest_id)
         if invest is None:
@@ -148,28 +228,32 @@ class CliFunc:
         xirr_str += f", year: {invest.xirr(end_day - datetime.timedelta(days=365), end_day) * 100:.3f}%"
         print(f"{xirr_str}")
         print(f"{"date":10s}{"value":>15s}{"return":>15s}{"daily_return":>15s}")
-        for date in invest.get_value_line().keys()[-7:]:
+        if log_num is None:
+            log_num = 7
+        for date in invest.get_value_line().keys()[-log_num:]:
             print(
                 f"{date}{invest.get_value(date):>15.2f}{invest.get_return(date):>15.2f}{invest.get_daily_return(date):>15.2f}")
         print(f"{DELIVER}")
 
-    def _print_invest_action(self, ledger_id: int, invest_id: int):
+    def _print_invest_action(self, ledger_id: int, invest_id: int, log_num: int = None):
         invest = self._ledger_mng.get_invest(ledger_id, invest_id)
         if invest is None:
             return
 
         print(
             f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
+        if log_num is None:
+            log_num = 30
         i = 0
         action_str = ""
         for date, actions in reversed(invest._actions.items()):
             for action in reversed(actions):
                 action_str = f"{date}, {action.type.value:>7}, {action.value:>10}" + action_str
                 i += 1
-                if i >= 30:
+                if i >= log_num:
                     break
                 action_str = "\n" + action_str
-            if i >= 30:
+            if i >= log_num:
                 break
         print(action_str)
 
@@ -213,31 +297,6 @@ class CliFunc:
                 if invest.get_archiving():
                     print(invest_print_list(invest))
         print(DELIVER)
-
-    def draw(self):
-        if not self._check_ledger():
-            print("No ledger selected")
-            return
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().keys()[-30:]
-        data_value = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().values()[-30:]
-        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-30:]
-        self._draw_value_return(dates, data_value, data_return)
-
-    def draw_return(self):
-        if not self._check_ledger():
-            print("No ledger selected")
-            return
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().keys()[-30:]
-        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-30:]
-        self._drawer(dates, data_return)
-
-    def draw_daily_return(self):
-        if not self._check_ledger():
-            print("No ledger selected")
-            return
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().keys()[-30:]
-        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().values()[-30:]
-        self._drawer(dates, data_return, "bar")
 
     def _draw_value_return(self, dates, values, returns):
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -292,6 +351,54 @@ class CliFunc:
         # plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
 
         fig.tight_layout()
+        plt.show()
+
+    def _draw_all(self, dates, value_line_map):
+        if len(dates) == 0:
+            return
+        for name, values in value_line_map.items():
+            if len(values) != len(dates):
+                raise ValueError(f"Series'{name}' len error")
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        color_cycle = plt.cm.get_cmap('tab20', len(value_line_map))
+
+        for idx, (series_name, values) in enumerate(value_line_map.items()):
+            ax.plot(dates,
+                    values,
+                    label=series_name,
+                    color=color_cycle(idx),
+                    linewidth=1,
+                    alpha=0.8,
+                    # marker='o' if len(dates) < 30 else None
+                    )
+
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d"))
+        ax.xaxis.set_major_locator(matplotlib.dates.AutoDateLocator())
+        # fig.autofmt_xdate()
+
+        ax.legend(loc='upper left',
+                  bbox_to_anchor=(1.02, 1),
+                  borderaxespad=0.,
+                  frameon=False,
+                  title=None,
+                  title_fontsize='large'
+                  )
+        plt.subplots_adjust(left=0.1,
+                            right=0.8,
+                            bottom=0.1,
+                            top=0.9)
+
+        ax.set_xlabel("date", fontsize=12, labelpad=10)
+        ax.set_ylabel("value", fontsize=12, labelpad=10)
+
+        ax.grid(True, linestyle='--', alpha=0.6)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        ax.autoscale(enable=True, axis='both', tight=True)
+
         plt.show()
 
     def _check_ledger(self) -> bool:
