@@ -41,10 +41,10 @@ class LedgerManager:
 
     def get_invest(self, ledger_id: int, invest_id: int):
         if ledger_id not in self._ledgers.keys():
-            print(f"Ledger id {ledger_id} not found")
+            # print(f"Ledger id {ledger_id} not found")
             return None
         if invest_id not in self.get_ledger(ledger_id).get_invest().keys():
-            print(f"Invest id {invest_id} not found")
+            # print(f"Invest id {invest_id} not found")
             return None
 
         return self.get_ledger(ledger_id).get_invest(invest_id)

@@ -33,6 +33,9 @@ class CliFunc:
 
         plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
 
+    def exit(self):
+        exit(0)
+
     def show_all(self) -> None:
         for ledger_id in self._ledger_mng.get_ledgers().keys():
             print(DELIVER)
@@ -65,6 +68,9 @@ class CliFunc:
             print("No ledger selected")
             return
         self._print_invest_action(self._selected_ledger_id, invest_id, log_num=log_num)
+
+    def add_ledger(self, ledger_name: str):
+        self._ledger_mng.add_ledger(ledger_name)
 
     def add_invest(self, invest_name: str, invest_type_name: str):
         if not self._check_ledger():
@@ -104,10 +110,33 @@ class CliFunc:
             return
         if point_num is None:
             point_num = 30
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().keys()[-point_num:]
-        data_value = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().values()[-point_num:]
-        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-point_num:]
-        self._draw_value_return(dates, data_value, data_return)
+        ledger = self._ledger_mng.get_ledger(self._selected_ledger_id)
+        dates = ledger.get_value_line().keys()[-point_num:]
+        data_value = ledger.get_value_line().values()[-point_num:]
+        self._drawer(f"{ledger.get_name()} value", dates, data_value)
+
+    def draw_return(self, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        if point_num is None:
+            point_num = 30
+        ledger = self._ledger_mng.get_ledger(self._selected_ledger_id)
+        dates = ledger.get_return_line().keys()[-point_num:]
+        data_return = ledger.get_return_line().values()[-point_num:]
+        self._drawer(f"{ledger.get_name()} return", dates, data_return)
+
+    def draw_daily_return(self, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+            return
+        if point_num is None:
+            point_num = 30
+        ledger = self._ledger_mng.get_ledger(self._selected_ledger_id)
+        dates = ledger.get_daily_return_line().keys()[-point_num:]
+        data_return = ledger.get_daily_return_line().values()[
+                      -point_num:]
+        self._drawer(f"{ledger.get_name()} daily return", dates, data_return, "bar")
 
     def draw_all(self, point_num: int = None):
         if not self._check_ledger():
@@ -117,11 +146,11 @@ class CliFunc:
         if point_num is None:
             point_num = 30
 
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().keys()[-point_num:]
+        ledger = self._ledger_mng.get_ledger(self._selected_ledger_id)
+        dates = ledger.get_value_line().keys()[-point_num:]
         data_values = {}
-        data_values[self._selected_ledger_name] = self._ledger_mng.get_ledger(
-            self._selected_ledger_id).get_value_line().values()[-point_num:]
-        for invest in self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest_list():
+        data_values[self._selected_ledger_name] = ledger.get_value_line().values()[-point_num:]
+        for invest in ledger.get_invest_list():
             # if invest.get_archiving():
             #     continue
             invest_name = invest.get_name()
@@ -129,7 +158,7 @@ class CliFunc:
             for date in dates:
                 invest_value_line[date] = invest.get_value(date)
             data_values[invest_name] = invest_value_line.values()
-        self._draw_all(dates, data_values)
+        self._draw_all(f"{ledger.get_name()} value", dates, data_values)
 
     def draw_all_return(self, point_num: int = None):
         if not self._check_ledger():
@@ -139,11 +168,11 @@ class CliFunc:
         if point_num is None:
             point_num = 30
 
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_value_line().keys()[-point_num:]
+        ledger = self._ledger_mng.get_ledger(self._selected_ledger_id)
+        dates = ledger.get_value_line().keys()[-point_num:]
         data_values = {}
-        data_values[self._selected_ledger_name] = self._ledger_mng.get_ledger(
-            self._selected_ledger_id).get_return_line().values()[-point_num:]
-        for invest in self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest_list():
+        data_values[self._selected_ledger_name] = ledger.get_return_line().values()[-point_num:]
+        for invest in ledger.get_invest_list():
             # if invest.get_archiving():
             #     continue
             invest_name = invest.get_name()
@@ -151,28 +180,49 @@ class CliFunc:
             for date in dates:
                 invest_value_line[date] = invest.get_return(date)
             data_values[invest_name] = invest_value_line.values()
-        self._draw_all(dates, data_values)
+        self._draw_all(f"{ledger.get_name()} return", dates, data_values)
 
-    def draw_return(self, point_num: int = None):
+    def draw_invest(self, invest_num: int, point_num: int = None):
         if not self._check_ledger():
             print("No ledger selected")
-            return
         if point_num is None:
             point_num = 30
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().keys()[-point_num:]
-        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_return_line().values()[-point_num:]
-        self._drawer(dates, data_return)
+        invest = self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest(invest_num)
+        if invest is None:
+            print("No invest found")
+            return
 
-    def draw_daily_return(self, point_num: int = None):
+        dates = invest.get_value_line().keys()[-point_num:]
+        data_value = invest.get_value_line().values()[-point_num:]
+        self._drawer(f"{invest.get_name()} value", dates, data_value)
+
+    def draw_invest_return(self, invest_num: int, point_num: int = None):
         if not self._check_ledger():
             print("No ledger selected")
-            return
         if point_num is None:
             point_num = 30
-        dates = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().keys()[-point_num:]
-        data_return = self._ledger_mng.get_ledger(self._selected_ledger_id).get_daily_return_line().values()[
-                      -point_num:]
-        self._drawer(dates, data_return, "bar")
+        invest = self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest(invest_num)
+        if invest is None:
+            print("No invest found")
+            return
+
+        dates = invest.get_return_line().keys()[-point_num:]
+        data_return = invest.get_return_line().returns()[-point_num:]
+        self._drawer(f"{invest.get_name()} return", dates, data_return)
+
+    def draw_invest_daily_return(self, invest_num: int, point_num: int = None):
+        if not self._check_ledger():
+            print("No ledger selected")
+        if point_num is None:
+            point_num = 30
+        invest = self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest(invest_num)
+        if invest is None:
+            print("No invest found")
+            return
+
+        dates = invest.get_daily_return_line().keys()[-point_num:]
+        data_daily_return = invest.get_daily_return_line().daily_returns()[-point_num:]
+        self._drawer(f"{invest.get_name()} daily return", dates, data_daily_return)
 
     def _get_selected_ledger_id(self):
         return self._selected_ledger_id
@@ -187,6 +237,9 @@ class CliFunc:
     def _add_action(self, invest_id: int, year: int, month: int, day: int, action_type_name: str, value: float):
         if not self._check_ledger():
             print("No ledger selected")
+            return
+        if self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest(invest_id) is None:
+            print("No invest found")
             return
         action_type = InvestmentActionType(action_type_name)
         self._ledger_mng.add_investment_action(self._selected_ledger_id, invest_id,
@@ -323,7 +376,7 @@ class CliFunc:
         fig.tight_layout()
         plt.show()
 
-    def _drawer(self, dates, values, line_type: str = "line"):
+    def _drawer(self, name: str, dates, values, line_type: str = "line"):
         fig, ax = plt.subplots(figsize=(12, 6))
 
         if line_type == "line":
@@ -344,7 +397,7 @@ class CliFunc:
 
         ax.grid(True, linestyle='--', alpha=0.3, color='#636363')
 
-        ax.set_title("test", fontsize=14, pad=20)
+        ax.set_title(name, fontsize=14, pad=20)
         ax.set_xlabel("date", fontsize=12, labelpad=10)
         ax.set_ylabel("value", fontsize=12, labelpad=10)
 
@@ -353,7 +406,7 @@ class CliFunc:
         fig.tight_layout()
         plt.show()
 
-    def _draw_all(self, dates, value_line_map):
+    def _draw_all(self, name: str, dates, value_line_map):
         if len(dates) == 0:
             return
         for name, values in value_line_map.items():
@@ -403,6 +456,14 @@ class CliFunc:
 
     def _check_ledger(self) -> bool:
         if self._selected_ledger_id is None:
+            return False
+        else:
+            return True
+
+    def _check_invest(self, invest_id) -> bool:
+        if self._selected_ledger_id is None:
+            return False
+        elif self._ledger_mng.get_invest(self._selected_ledger_id, invest_id) is None:
             return False
         else:
             return True

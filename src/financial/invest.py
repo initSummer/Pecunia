@@ -62,7 +62,7 @@ class Invest:
                    investment_action_type: InvestmentActionType,
                    value: float) -> None:
         date = datetime.date(year, month, day)
-        if date not in self._actions:
+        if (date not in self._actions) or len(self._actions[date]) == 0:
             self._actions[date] = SortedList()
             max_microsecond = 0
         else:
@@ -118,7 +118,10 @@ class Invest:
             self._daily_return_line[date] = \
                 (self._return_line[date] - (self._return_line[last_day] if last_day in self._daily_return_line else 0))
 
-        self._cashflow[last_day + datetime.timedelta(days=1)] += self.get_value()
+        last_day += datetime.timedelta(days=1)
+        if last_day not in self._cashflow:
+            self._cashflow[last_day] = 0.0
+        self._cashflow[last_day] += self.get_value()
 
     def debug_print(self):
         print(f"{self._id}-{self._name}")

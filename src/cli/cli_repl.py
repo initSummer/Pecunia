@@ -7,14 +7,13 @@ from typing import Callable, List, Dict
 from enum import Enum
 
 from .cli_func import CliFunc
+from .terminal_color import TerminalColor
 from src.util import *
 
 CLI_HISTORY_FILE = "./data/cli_history"
 
 
 class CliRepl(cmd.Cmd):
-    # prompt = f"{PROJECT_NAME} > "
-
     def __init__(self):
         super().__init__()
         self.instance = CliFunc()
@@ -22,11 +21,12 @@ class CliRepl(cmd.Cmd):
         print(PROJECT_INFO)
 
     @property
-    def prompt(self)->str:
+    def prompt(self) -> str:
         if self.instance._get_selected_ledger_id() is None:
-            repl_prompt = f"{PROJECT_NAME} $ "
+            repl_prompt = f"{TerminalColor.GREEN}{PROJECT_NAME}{TerminalColor.RESET} $ "
         else:
-            repl_prompt = f"{PROJECT_NAME} <{self.instance._get_selected_ledger_id()}-{self.instance._get_selected_ledger_name()}> $ "
+            repl_prompt = f"{TerminalColor.GREEN}{PROJECT_NAME}{TerminalColor.RESET} "
+            repl_prompt += f"<{self.instance._get_selected_ledger_id()}-{self.instance._get_selected_ledger_name()}> $ "
         return repl_prompt
 
     def _get_commands(self) -> List[str]:

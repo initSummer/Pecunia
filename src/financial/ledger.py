@@ -43,8 +43,10 @@ class Ledger:
     def get_invest(self, invest_id: int = None):
         if invest_id is None:
             return self._invests
-        else:
+        elif invest_id in self._invests:
             return self._invests.get(invest_id)
+        else:
+            return None
 
     def get_invest_list(self):
         return self._invests.values()
