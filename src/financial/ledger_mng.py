@@ -26,10 +26,13 @@ class LedgerManager:
         ledger.set_id(id)
         return id
 
-    def get_ledger(self, ledger_id: int) -> Ledger:
-        if ledger_id not in self._ledgers.keys():
-            raise KeyError("Ledger id {} not found".format(ledger_id))
-        return self._ledgers[ledger_id]
+    def get_ledger(self, ledger_id: int = None):
+        if ledger_id is None:
+            return self._ledgers
+        elif ledger_id not in self._ledgers.keys():
+            return None
+        else:
+            return self._ledgers[ledger_id]
 
     def get_ledgers(self) -> SortedDict[Ledger]:
         return self._ledgers
@@ -61,7 +64,7 @@ class LedgerManager:
                                                               year, month, day,
                                                               investment_action_type, value)
 
-    def delete_last_action(self,ledger_id:int, invest_id: int) -> None:
+    def delete_last_action(self, ledger_id: int, invest_id: int) -> None:
         self._ledgers[ledger_id].delete_last_action(invest_id)
 
     def set_invest_archiving(self, ledger_id: int, invest_id: int, archiving: bool) -> None:
@@ -72,15 +75,15 @@ class LedgerManager:
     def set_invest_type(self, ledger_id: int, invest_id: int, invest_type: InvestType) -> None:
         self.get_ledger(ledger_id).get_invest(invest_id).set_type(invest_type)
 
-    def get_invest_xirr(self, ledger_id: int, invest_id: int, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+    def get_invest_xirr(self, ledger_id: int, invest_id: int, start_day: datetime.date = None,
+                        end_day: datetime.date = None) -> float:
         return self.get_ledger(ledger_id).get_invest_xirr(invest_id, start_day, end_day)
 
     def get_ledger_xirr(self, ledger_id: int, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
-        return self.get_ledger(ledger_id).xirr(start_day, end_day,)
+        return self.get_ledger(ledger_id).xirr(start_day, end_day, )
 
     def get_ledger_tagr(self, ledger_id: int, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
-        return self.get_ledger(ledger_id).tagr(start_day, end_day,)
-
+        return self.get_ledger(ledger_id).tagr(start_day, end_day, )
 
     def update(self) -> None:
         for ledger in self._ledgers.values():

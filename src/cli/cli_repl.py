@@ -22,11 +22,12 @@ class CliRepl(cmd.Cmd):
 
     @property
     def prompt(self) -> str:
-        if self.instance._get_selected_ledger_id() is None:
-            repl_prompt = f"{TerminalColor.GREEN}{PROJECT_NAME}{TerminalColor.RESET} $ "
-        else:
-            repl_prompt = f"{TerminalColor.GREEN}{PROJECT_NAME}{TerminalColor.RESET} "
-            repl_prompt += f"<{self.instance._get_selected_ledger_id()}-{self.instance._get_selected_ledger_name()}> $ "
+        repl_prompt = f"{TerminalColor.GREEN}{PROJECT_NAME}{TerminalColor.RESET}"
+        if self.instance._get_selected_ledger_id() is not None:
+            repl_prompt += f" <{self.instance._get_selected_ledger_id()}-{self.instance._get_selected_ledger_name()}"
+        if self.instance._get_selected_invest_id() is not None:
+            repl_prompt += f"/{self.instance._get_selected_invest_id()}-{self.instance._get_selected_invest_name()}"
+        repl_prompt += "> $ "
         return repl_prompt
 
     def _get_commands(self) -> List[str]:
@@ -86,7 +87,10 @@ class CliRepl(cmd.Cmd):
 
         for param, value in zip(params, raw_args):
             try:
-                args[param.name] = param.annotation(value)
+                if param.annotation != inspect.Parameter.empty:
+                    args[param.name] = param.annotation(value)
+                else:
+                    args[param.name] = value
             except ValueError:
                 raise TypeError(f"Argument {param.name} must be of type {param.annotation}")
         return args

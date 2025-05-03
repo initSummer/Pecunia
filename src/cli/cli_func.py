@@ -1,26 +1,29 @@
-import inspect
-from tkinter import BooleanVar
-
 import matplotlib
 
 from src.financial import *
-from src.financial import ledger_mng, InvestmentAction
+# from src.financial import ledger_mng, InvestmentAction
 from src.financial.ledger_mng import LedgerManager
-from sortedcontainers import SortedDict
+# from sortedcontainers import SortedDict
 from src.util import *
 
 import datetime
 import json
-import cmd
-import shlex
-import sys
-from functools import wraps
-from typing import Callable
+# from typing import Callable
 
 import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter, AutoDateLocator
 
-DELIVER = "-" * 80
+DELIVER = "|" + "-" * 80
+
+ID_LENGTH = 3
+NAME_LENGTH = 40
+VALUE_LENGTH = 11
+RETURN_LENGTH = 10
+XIRR_LENGTH = 8
+TAGR_LENGTH = 8
+
+DEFAULT_VALUE_LOG_NUM = 15
+DEFAULT_ACTION_LOG_NUM = 16
 
 
 class CliFunc:
@@ -31,48 +34,194 @@ class CliFunc:
         self._selected_ledger_id = None
         self._selected_ledger_name = None
 
+        self._selected_invest_id = None
+        self._selected_invest_name = None
+
         plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
+
+    def l(self, dir_name: str = None):
+        self.ll(dir_name)
+
+    def ll(self, dir_name: str = None):
+        if dir_name is None or dir_name == "." or dir_name == "./":
+            if self._selected_ledger_id is not None and self._selected_invest_id is not None:
+                pass
+            elif self._selected_ledger_id is not None and self._selected_invest_id is None:
+                self._ll_level_1(self._selected_ledger_id)
+            elif self._selected_ledger_id is None and self._selected_invest_id is None:
+                self._ll_level_0()
+            else:
+                raise Exception("Error, select invest but not select ledger")
+            return
+        elif dir_name == "../" or dir_name == "..":
+            if self._selected_ledger_id is not None and self._selected_invest_id is not None:
+                self._ll_level_1(self._selected_ledger_id)
+            elif self._selected_ledger_id is not None and self._selected_invest_id is None:
+                self._ll_level_0()
+            elif self._selected_ledger_id is None and self._selected_invest_id is None:
+                pass
+            else:
+                raise Exception("Error, select invest but not select ledger")
+            return
+        else:
+            item_id = self._tran_to_int(dir_name)
+            if item_id is not None:
+                if self._selected_ledger_id is not None and self._selected_invest_id is not None:
+                    print("Error, already selected invest")
+                elif self._selected_ledger_id is not None and self._selected_invest_id is None:
+                    pass
+                elif self._selected_ledger_id is None and self._selected_invest_id is None:
+                    self._ll_level_1(item_id)
+                else:
+                    raise Exception("Error, select invest but not select ledger")
+                return
+            else:
+                print("Error, no such directory")
+                return
+
+    def _ll_level_0(self):
+        title = self._get_oneline_title()
+        print(f"|{"-" * (len(title) - 2)}|")
+        print(f"{title}")
+        print(f"|{"-" * (len(title) - 2)}|")
+        for ledger in self._ledger_mng.get_ledgers().values():
+            print(self._get_oneline(ledger))
+        print(f"|{"-" * (len(title) - 2)}|")
+
+    def _ll_level_1(self, ledger_id):
+        ledger = self._ledger_mng.get_ledger(ledger_id)
+        if ledger is not None:
+            title = self._get_oneline_title()
+            print(f"|{"-" * (len(title) - 2)}|")
+            for invest in ledger.get_invest().values():
+                print(self._get_oneline(invest))
+            print(f"|{"-" * (len(title) - 2)}|")
+
+    def cd(self, dir_name: str):
+        item_id = self._tran_to_int(dir_name)
+        if item_id is not None:
+            if self._selected_ledger_id is None and self._selected_invest_id is None:
+                if item_id in self._ledger_mng.get_ledgers().keys():
+                    self._selected_ledger_id = item_id
+                    self._selected_ledger_name = self._ledger_mng.get_ledger(item_id).get_name()
+                else:
+                    print("Error, no such ledger")
+            elif self._selected_ledger_id is not None and self._selected_invest_id is None:
+                if self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest(item_id) is not None:
+                    self._selected_invest_id = item_id
+                    self._selected_invest_name = self._ledger_mng.get_invest(self._selected_ledger_id,
+                                                                             self._selected_invest_id).get_name()
+                else:
+                    print("Error, no such invest")
+            else:
+                print("Error, no bllower")
+        elif dir_name == ".." or dir_name == "../":
+            if self._selected_ledger_id is None and self._selected_invest_id is None:
+                print("Error, no upper")
+            elif self._selected_ledger_id is not None and self._selected_invest_id is None:
+                self._selected_ledger_id = None
+                self._selected_ledger_name = None
+            elif self._selected_ledger_id is not None and self._selected_invest_id is not None:
+                self._selected_invest_id = None
+                self._selected_invest_name = None
+            elif self._selected_ledger_id is None and self._selected_invest_id is not None:
+                raise (AssertionError("Program Error!"))
+        elif dir_name == "." or dir_name == "./":
+            pass
+        else:
+            print("Error, unknown dir name")
 
     def exit(self):
         exit(0)
 
-    def show_all(self) -> None:
-        for ledger_id in self._ledger_mng.get_ledgers().keys():
-            print(DELIVER)
-            self._print_ledger_title(ledger_id)
-        print(DELIVER)
-
-    def select(self, ledger_id: int) -> None:
-        if ledger_id in self._ledger_mng.get_ledgers():
-            self._selected_ledger_id = ledger_id
-            self._selected_ledger_name = self._ledger_mng.get_ledger(ledger_id).get_name()
-            print(f"Selected ledger <{self._selected_ledger_name}>")
-            self._print_ledger(ledger_id)
+    def show(self, arg1=None, arg2=None, arg3=None):
+        if arg1 is None:
+            if self._selected_ledger_id is not None and self._selected_invest_id is not None:
+                self._print_invest_detail(self._selected_ledger_id, self._selected_invest_id)
+            elif self._selected_ledger_id is not None and self._selected_invest_id is None:
+                self._print_ledger_detail(self._selected_ledger_id)
+            elif self._selected_ledger_id is None and self._selected_invest_id is None:
+                self.ll()
+            else:
+                raise Exception("Error, select invest but not select ledger")
+        elif arg1 is not None and arg2 is None:
+            if self._selected_ledger_id is not None and self._selected_invest_id is not None:
+                if arg1 == "value":
+                    self._print_invest_value(self._selected_ledger_id, self._selected_invest_id)
+                elif arg1 == "action":
+                    self._print_invest_action(self._selected_ledger_id, self._selected_invest_id)
+                else:
+                    print("Error, unknown arguments.")
+            elif self._selected_ledger_id is not None and self._selected_invest_id is None:
+                item_id = self._tran_to_int(arg1)
+                if item_id is not None:
+                    self._print_invest_detail(self._selected_ledger_id, item_id)
+                else:
+                    print("Error, unknown arguments.")
+            elif self._selected_ledger_id is None and self._selected_invest_id is None:
+                item_id = self._tran_to_int(arg1)
+                if item_id is not None:
+                    self._print_ledger_detail(item_id)
+                else:
+                    print("Error, unknown arguments.")
+            else:
+                raise Exception("Error, select invest but not select ledger")
+        elif arg1 is not None and arg2 is not None and arg3 is None:
+            if self._selected_ledger_id is not None and self._selected_invest_id is None:
+                show_type = arg1
+                invest_id = self._tran_to_int(arg2)
+                if invest_id is not None:
+                    if show_type == "value":
+                        self._print_invest_value(self._selected_ledger_id, invest_id)
+                    elif show_type == "action":
+                        self._print_invest_action(self._selected_ledger_id, invest_id)
+                    else:
+                        print("Error, unknown arguments.")
+                else:
+                    print("Error")
+            elif self._selected_ledger_id is not None and self._selected_invest_id is not None:
+                show_type = arg1
+                log_num = self._tran_to_int(arg2)
+                if log_num is not None:
+                    if show_type == "value":
+                        self._print_invest_value(self._selected_ledger_id, self._selected_invest_id, log_num)
+                    elif show_type == "action":
+                        self._print_invest_action(self._selected_ledger_id, self._selected_invest_id, log_num)
+                    else:
+                        print("Error, unknown arguments.")
+                else:
+                    print("Error, unknown arguments.")
+            else:
+                print("Error, unknown arguments.")
+        elif arg1 is not None and arg2 is not None and arg3 is not None:
+            show_type = arg1
+            invest_id = self._tran_to_int(arg2)
+            log_num = self._tran_to_int(arg3)
+            if self._selected_ledger_id is not None and self._selected_invest_id is None:
+                if invest_id is not None and log_num is not None:
+                    if show_type == "value":
+                        self._print_invest_value(self._selected_ledger_id, invest_id, log_num)
+                    elif show_type == "action":
+                        self._print_invest_action(self._selected_ledger_id, invest_id, log_num)
+                    else:
+                        print("Error, unknown arguments.")
+                else:
+                    print("Error")
+            else:
+                print("Error, unknown arguments.")
         else:
-            print(f"No such ledger, id {ledger_id}")
-
-    def show(self):
-        if not self._check_ledger():
-            self.show_all()
-        else:
-            self._print_ledger(self._selected_ledger_id)
-
-    def show_invest(self, invest_id: int, log_num: int = None):
-        if not self._check_ledger():
-            print("No ledger selected")
-            return
-        self._print_invest(self._selected_ledger_id, invest_id, log_num=log_num)
-
-    def show_invest_action(self, invest_id: int, log_num: int = None):
-        if not self._check_ledger():
-            print("No ledger selected")
-            return
-        self._print_invest_action(self._selected_ledger_id, invest_id, log_num=log_num)
+            print("Error, unknown arguments.")
 
     def add_ledger(self, ledger_name: str):
+        if format_cn(ledger_name, NAME_LENGTH) is None:
+            print(f"Error, name max length {NAME_LENGTH}")
+            return
         self._ledger_mng.add_ledger(ledger_name)
 
     def add_invest(self, invest_name: str, invest_type_name: str):
+        if format_cn(invest_name, NAME_LENGTH) is None:
+            print(f"Error, name max length {NAME_LENGTH}")
+            return
         if not self._check_ledger():
             print("No ledger selected")
             return
@@ -185,12 +334,14 @@ class CliFunc:
     def draw_invest(self, invest_num: int, point_num: int = None):
         if not self._check_ledger():
             print("No ledger selected")
-        if point_num is None:
-            point_num = 30
+            return
         invest = self._ledger_mng.get_ledger(self._selected_ledger_id).get_invest(invest_num)
         if invest is None:
             print("No invest found")
             return
+
+        if point_num is None:
+            point_num = 30
 
         dates = invest.get_value_line().keys()[-point_num:]
         data_value = invest.get_value_line().values()[-point_num:]
@@ -207,7 +358,7 @@ class CliFunc:
             return
 
         dates = invest.get_return_line().keys()[-point_num:]
-        data_return = invest.get_return_line().returns()[-point_num:]
+        data_return = invest.get_return_line().values()[-point_num:]
         self._drawer(f"{invest.get_name()} return", dates, data_return)
 
     def draw_invest_daily_return(self, invest_num: int, point_num: int = None):
@@ -221,7 +372,7 @@ class CliFunc:
             return
 
         dates = invest.get_daily_return_line().keys()[-point_num:]
-        data_daily_return = invest.get_daily_return_line().daily_returns()[-point_num:]
+        data_daily_return = invest.get_daily_return_line().values()[-point_num:]
         self._drawer(f"{invest.get_name()} daily return", dates, data_daily_return)
 
     def _get_selected_ledger_id(self):
@@ -229,6 +380,12 @@ class CliFunc:
 
     def _get_selected_ledger_name(self):
         return self._selected_ledger_name
+
+    def _get_selected_invest_id(self):
+        return self._selected_invest_id
+
+    def _get_selected_invest_name(self):
+        return self._selected_invest_name
 
     def _add_today_action(self, invest_id: int, action_type_name: str, value: float):
         today = datetime.datetime.now().date()
@@ -248,28 +405,34 @@ class CliFunc:
         self._ledger_mng.update()
         self._dump_data()
 
-    def _print_ledger_title(self, ledger_id: int):
-        ledger = self._ledger_mng.get_ledger(ledger_id)
-        start_date = ledger.get_start_date()
-        last_date = ledger.get_end_date()
-        print(f"|Ledger: {ledger.get_name()}, ledger_id: {ledger.get_id()}")
-        print(f"|today: {last_date}, daily_return: {ledger.get_daily_return():.2f}")
-        print(f"|value: {ledger.get_value():.2f}, return: {ledger.get_return():.2f}")
-        xirr = f"|xirr: {ledger.xirr() * 100:.2f}%\n"
-        xirr += f"|    week: {ledger.xirr(last_date - datetime.timedelta(days=7), last_date) * 100:.2f}%, "
-        xirr += f"month: {ledger.xirr(last_date - datetime.timedelta(days=30), last_date) * 100:.2f}%, "
-        xirr += f"year: {ledger.xirr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
-        print(xirr)
-        tagr = f"|tagr: {ledger.tagr() * 100:.2f}%\n"
-        tagr += f"|    week: {ledger.tagr(last_date - datetime.timedelta(days=7), last_date) * 100:.2f}%, "
-        tagr += f"month: {ledger.tagr(last_date - datetime.timedelta(days=30), last_date) * 100:.2f}%, "
-        tagr += f"year: {ledger.tagr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
-        print(tagr)
+    def _get_oneline_title(self):
+        line = f"|{"id":^{ID_LENGTH}}"
+        line += f"|{"name":^{NAME_LENGTH}}"
+        line += f"|{"value":^{VALUE_LENGTH}}"
+        line += f"|{"return":^{RETURN_LENGTH}}"
+        line += f"|{"xirr":^{XIRR_LENGTH}}"
+        line += f"|"
+        return line
 
-    def _print_invest(self, ledger_id: int, invest_id: int, log_num: int = None,
-                      start_day: datetime.date = None, end_day: datetime.date = None):
+    def _get_oneline(self, obj) -> str:
+        line = f"|{obj.get_id():^{ID_LENGTH}}"
+        line += f"|{format_cn(obj.get_name(), NAME_LENGTH, "^")}"
+        line += f"|{obj.get_value():>{VALUE_LENGTH}.2f}"
+        line += f"|{obj.get_return():>{RETURN_LENGTH}.2f}"
+        line += f"|{f"{obj.xirr() * 100:.2f}%":>{XIRR_LENGTH}}"
+        line += f"|"
+        return line
+
+    def _print_invest_detail(self, ledger_id: int, invest_id: int):
+        self._print_invest_value(ledger_id, invest_id)
+
+    def _print_invest_sth(self, ledger_id: int, invest_id: int, log_num: int = None):
+        pass
+
+    def _print_invest_value(self, ledger_id: int, invest_id: int, log_num: int = None):
         invest = self._ledger_mng.get_invest(ledger_id, invest_id)
         if invest is None:
+            print("Error, no such invest.")
             return
 
         end_day = invest.get_value_line().keys()[-1]
@@ -282,7 +445,7 @@ class CliFunc:
         print(f"{xirr_str}")
         print(f"{"date":10s}{"value":>15s}{"return":>15s}{"daily_return":>15s}")
         if log_num is None:
-            log_num = 7
+            log_num = DEFAULT_VALUE_LOG_NUM
         for date in invest.get_value_line().keys()[-log_num:]:
             print(
                 f"{date}{invest.get_value(date):>15.2f}{invest.get_return(date):>15.2f}{invest.get_daily_return(date):>15.2f}")
@@ -294,14 +457,14 @@ class CliFunc:
             return
 
         print(
-            f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()}> {invest.get_name()}")
+            f"<{self._ledger_mng.get_ledger(invest.get_owner_ledger_id()).get_name()}-{invest.get_id()} {invest.get_name()}>")
         if log_num is None:
-            log_num = 30
+            log_num = DEFAULT_ACTION_LOG_NUM
         i = 0
         action_str = ""
         for date, actions in reversed(invest._actions.items()):
             for action in reversed(actions):
-                action_str = f"{date}, {action.type.value:>7}, {action.value:>10}" + action_str
+                action_str = f"{date}, {action.type.value:>8}, {action.value:>10}" + action_str
                 i += 1
                 if i >= log_num:
                     break
@@ -310,19 +473,60 @@ class CliFunc:
                 break
         print(action_str)
 
-    def _print_ledger(self, ledger_id: int):
+    def _print_ledger_detail(self, ledger_id: int):
         ledger = self._ledger_mng.get_ledger(ledger_id)
+        if ledger is None:
+            print("Error, no such ledger.")
         last_date = ledger.get_daily_return_line().keys()[-1]
-        print(DELIVER)
-        self._print_ledger_title(ledger_id)
-        print(DELIVER)
-        print(f"|{"id":^5}|{"value":^11}|{"return":^9}|{"xirr":^9}|{"today":^9}|{" name"}")
-        print(DELIVER)
+
+        line = f"|{"id":^{ID_LENGTH}}"
+        line += f"|{"name":^{NAME_LENGTH}}"
+        line += f"|{"value":^{VALUE_LENGTH}}"
+        line += f"|{"return":^{RETURN_LENGTH}}"
+        line += f"|{"xirr":^{XIRR_LENGTH}}"
+        line += f"|{"daily":^{RETURN_LENGTH}}"
+        line += f"|"
+
+        print(f"|{"-" * (len(line) - 2)}|")
+        temp = f"|Ledger: {ledger.get_name()}, ledger_id: {ledger.get_id()}"
+        temp += f"{" " * (len(line) - len(temp) - 1)}|"
+        print(temp)
+        temp = f"|today: {last_date}, daily_return: {ledger.get_daily_return():.2f}"
+        temp += f"{" " * (len(line) - len(temp) - 1)}|"
+        print(temp)
+        temp = f"|value: {ledger.get_value():.2f}, return: {ledger.get_return():.2f}"
+        temp += f"{" " * (len(line) - len(temp) - 1)}|"
+        print(temp)
+        xirr = f"|xirr: {ledger.xirr() * 100:.2f}%"
+        xirr += f"{" " * (len(line) - len(xirr) - 1)}|"
+        print(xirr)
+        xirr = f"|    week: {ledger.xirr(last_date - datetime.timedelta(days=7), last_date) * 100:.2f}%, "
+        xirr += f"month: {ledger.xirr(last_date - datetime.timedelta(days=30), last_date) * 100:.2f}%, "
+        xirr += f"year: {ledger.xirr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
+        xirr += f"{" " * (len(line) - len(xirr) - 1)}|"
+        print(xirr)
+        tagr = f"|tagr: {ledger.tagr() * 100:.2f}%"
+        tagr += f"{" " * (len(line) - len(tagr) - 1)}|"
+        print(tagr)
+        tagr = f"|    week: {ledger.tagr(last_date - datetime.timedelta(days=7), last_date) * 100:.2f}%, "
+        tagr += f"month: {ledger.tagr(last_date - datetime.timedelta(days=30), last_date) * 100:.2f}%, "
+        tagr += f"year: {ledger.tagr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
+        tagr += f"{" " * (len(line) - len(tagr) - 1)}|"
+        print(tagr)
+
+        print(f"|{"-" * (len(line) - 2)}|")
+        print(f"{line}")
+        print(f"|{"-" * (len(line) - 2)}|")
 
         def invest_print_list(invest) -> str:
-            print_list = f"|{invest.get_id():^5}|{invest.get_value():>11.2f}"
-            print_list += f"|{invest.get_return():>9.2f}|{f"{invest.xirr() * 100:.2f}%":>9}"
-            print_list += f"|{invest.get_daily_return(last_date):9.2f}| {invest.get_name()}"
+            print_list = f"|{invest.get_id():^{ID_LENGTH}}"
+            print_list += f"|{format_cn(invest.get_name(), NAME_LENGTH, "^")}"
+            # print_list += f"|{invest.get_name():^{NAME_LENGTH}}"
+            print_list += f"|{invest.get_value():>{VALUE_LENGTH}.2f}"
+            print_list += f"|{invest.get_return():>{RETURN_LENGTH}.2f}"
+            print_list += f"|{f"{invest.xirr() * 100:.2f}%":>{XIRR_LENGTH}}"
+            print_list += f"|{invest.get_daily_return(last_date):{RETURN_LENGTH}.2f}"
+            print_list += f"|"
             return print_list
 
         for invest_type in InvestType:
@@ -332,24 +536,29 @@ class CliFunc:
                     invest_type_value += invest.get_value()
             if invest_type_value == 0:
                 continue
-            print(
-                f"|{'-' * 5} {invest_type.name:>10}, {invest_type_value:>11.2f}, {invest_type_value / ledger.get_value() * 100:>7.2f}%")
+            type_line = f"|Type: {invest_type.name: >10}"
+            type_line += f", {invest_type_value:>11.2f}"
+            type_line += f", {invest_type_value / ledger.get_value() * 100:>7.2f}%"
+            type_line += f"{" " * (len(line) - len(type_line) - 1)}|"
+            print(type_line)
             for invest in ledger.get_invest_list():
                 if invest.get_type() not in InvestType:
                     raise (ValueError, "Invest type unknown")
                 if invest.get_type() == invest_type and not invest.get_archiving():
                     print(invest_print_list(invest))
+            print(f"|{"-" * (len(line) - 2)}|")
 
         has_archiving = False
         for invest in ledger.get_invest_list():
             if invest.get_archiving():
                 has_archiving = True
         if has_archiving:
-            print(f"|{'-' * 5} {"Archiving":>10}")
+            archiving_line = f"| Archiving "
+            archiving_line += f"{" " * (len(line) - len(archiving_line) - 1)}|"
             for invest in ledger.get_invest_list():
                 if invest.get_archiving():
                     print(invest_print_list(invest))
-        print(DELIVER)
+            print(f"|{"-" * (len(line) - 2)}|")
 
     def _draw_value_return(self, dates, values, returns):
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -471,3 +680,10 @@ class CliFunc:
     def _dump_data(self):
         with open(DATA_FILE, "w") as file:
             file.write(json.dumps(self._ledger_mng.convert_to_json(), indent=2))
+
+    def _tran_to_int(self, s: str):
+        try:
+            i = int(s.strip())
+            return i
+        except ValueError:
+            return None

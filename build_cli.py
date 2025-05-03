@@ -51,9 +51,10 @@ def pack():
     subprocess.run([nuitka_executable, "--version"], check=True)
     nuitka_command = [
         nuitka_executable,
-        "--jobs=16",
+        "--jobs=32",
         "--standalone",
         "--onefile",
+        # "--enable-cache",
         "--lto=yes",
         "--follow-imports",
         # "--windows-console-mode=enable",
@@ -64,7 +65,9 @@ def pack():
     subprocess.run(nuitka_command, check=True)
 
     print("Pack Done, Cleaning")
-    for path in [f"{prog_name}.build", f"{prog_name}.dist", f"{prog_name}.onefile-build",
+    for path in [f"{prog_name}.build",
+                 f"{prog_name}.dist",
+                 f"{prog_name}.onefile-build",
                  "nuitka-crash-report.xml"]:
         if os.path.exists(path):
             if os.path.isfile(path):

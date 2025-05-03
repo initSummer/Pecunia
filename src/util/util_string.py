@@ -3,6 +3,8 @@ from wcwidth import wcswidth
 
 def format_cn(text: str, width: int, align: str = '<'):
     current_width = wcswidth(text)
+    if current_width > width:
+        return None
     padding = max(width - current_width, 0)
     sss = ' '
 
@@ -16,7 +18,5 @@ def format_cn(text: str, width: int, align: str = '<'):
         res =  sss * left + text + sss * right
     else:
         raise ValueError('align must be <, >, or ^')
-    print("_________________________________________________________")
-    print(f"Res: |{res}|,Text:{text}, width: {current_width}, padding: {padding}")
 
     return res

@@ -8,7 +8,9 @@ def cum_dict_accessors(*attributes: str) -> Callable:
         for attr in attributes:
             def make_methods(attr_name: str) -> None:
                 def get_sth(self, date: Optional[datetime.datetime] = None) -> float:
-                    if date is None:
+                    if len(getattr(self,attr_name)) == 0:
+                        return 0
+                    elif date is None:
                         if len(getattr(self, attr_name)) == 0:
                             return 0
                         else:
