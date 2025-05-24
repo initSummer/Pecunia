@@ -31,3 +31,11 @@ def sorted_list_to_std_list(sorted_list: SortedList) -> list:
 
 def std_list_to_sorted_list(std_list: list) -> SortedList:
     pass
+
+def calc_anonymous_float(total: float, part: float, anaoymous: bool) -> float:
+    if total == 0 or part == 0:
+         return 0
+    if anaoymous:
+        return part / total * 100
+    else:
+        return  part
