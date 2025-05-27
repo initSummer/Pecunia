@@ -251,6 +251,8 @@ class CliFunc:
             print(f"Error, name max length {NAME_LENGTH}")
             return
         self._ledger_mng.add_ledger(ledger_name)
+        self._ledger_mng.update()
+        self._dump_data()
 
     def _add_invest(self, invest_name: str, invest_type_name: str):
         if format_cn(invest_name, NAME_LENGTH) is None:
@@ -260,6 +262,8 @@ class CliFunc:
             print("No ledger selected")
             return
         self._ledger_mng.add_invest(self._selected_ledger_id, invest_name, invest_type_name)
+        self._ledger_mng.update()
+        self._dump_data()
 
     def update(self, invest_id: int, value: float):
         self._add_today_action(invest_id, "UPDATE", value)

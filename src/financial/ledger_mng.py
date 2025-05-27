@@ -57,7 +57,7 @@ class LedgerManager:
                               invest_id: int,
                               year: int, month: int, day: int,
                               investment_action_type: InvestmentActionType,
-                              value: float) -> None:
+                              value: float) -> bool:
         if ledger_id not in self._ledgers.keys():
             raise KeyError("Ledger id {} not found".format(ledger_id))
         return self._ledgers[ledger_id].add_investment_action(invest_id,

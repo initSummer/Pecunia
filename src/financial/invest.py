@@ -17,7 +17,6 @@ class Invest:
         self._name: str = name
         self._type: InvestType = InvestType.UNDEFINED
         self._actions: SortedDict[datetime.date, SortedList[float]] = SortedDict()
-        self._archiving: bool = False
 
         self._value_line: SortedDict[datetime.date, float] = SortedDict()
         self._return_line: SortedDict[datetime.date, float] = SortedDict()
@@ -48,11 +47,8 @@ class Invest:
     def get_type(self) -> InvestType:
         return self._type
 
-    def set_archiving(self, archiving: bool) -> None:
-        self._archiving = archiving
-
     def get_archiving(self) -> bool:
-        return self._archiving
+        return self.get_value() == 0
 
     def get_cashflow(self) -> SortedDict[datetime.date, float]:
         return self._cashflow
@@ -174,7 +170,6 @@ class Invest:
         return {
             "name": self.get_name(),
             "type": self.get_type().value,
-            "archiving": self.get_archiving(),
             "actions": actions
         }
 
@@ -182,10 +177,8 @@ class Invest:
     def convert_from_dict(json_dict):
         name = json_dict["name"]
         type = InvestType(json_dict["type"])
-        archiving = json_dict["archiving"]
 
         invest = Invest(name)
-        invest.set_archiving(archiving)
         invest.set_type(type)
 
         action_list = json.loads(json_dict["actions"])
