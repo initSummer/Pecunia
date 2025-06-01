@@ -2,8 +2,10 @@ import cmd
 import inspect
 import shlex
 import sys
+import datetime
 from functools import wraps
 from typing import Callable, List, Dict
+import os
 from enum import Enum
 
 from .cli_func import CliFunc
@@ -11,13 +13,16 @@ from .terminal_color import TerminalColor
 from src.util import *
 
 CLI_HISTORY_FILE = "./data/cli_history"
+CLI_LOG_FILE = "./log/cli_log.txt"
 
 
 class CliRepl(cmd.Cmd):
     def __init__(self):
         super().__init__()
+        self.logfile = CLI_LOG_FILE
         self.instance = CliFunc()
         self.available_commands = self._get_commands()
+        self._dump_log(f"------ CLI STARTED {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ------")
         print(PROJECT_INFO)
 
     @property
@@ -65,6 +70,7 @@ class CliRepl(cmd.Cmd):
                 print(f" {command}")
 
     def default(self, line):
+        self._dump_log(line)
         parts = shlex.split(line)
         if not parts:
             return
@@ -94,3 +100,17 @@ class CliRepl(cmd.Cmd):
             except ValueError:
                 raise TypeError(f"Argument {param.name} must be of type {param.annotation}")
         return args
+
+    def _dump_log(self, line):
+        log_dir = os.path.dirname(self.logfile)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"{timestamp} | {line}\n"
+        try:
+            with open(self.logfile, "a") as f:
+                f.write(log_entry)
+        except Exception as e:
+            print(f"Error, failed to log command: {e}")
+
