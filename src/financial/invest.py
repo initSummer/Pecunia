@@ -1,4 +1,6 @@
 import datetime
+from doctest import debug
+
 from sortedcontainers import SortedDict, SortedList
 import json
 
@@ -22,6 +24,12 @@ class Invest:
         self._return_line: SortedDict[datetime.date, float] = SortedDict()
         self._daily_return_line: SortedDict[datetime.date, float] = SortedDict()
         self._cashflow: SortedDict[datetime.date, float] = SortedDict()
+
+        self._last_day: datetime.date = None
+
+    def set_last_day(self, last_day: datetime.date):
+        self._last_day = last_day
+        # self.update_cashflow()
 
     def set_owner_ledger_id(self, invest_owner_ledger_id: int):
         self._owner_ledger_id = invest_owner_ledger_id
@@ -79,7 +87,6 @@ class Invest:
         self._value_line.clear()
         self._return_line.clear()
         self._daily_return_line.clear()
-        self._cashflow.clear()
 
         dates = self._actions.keys()
         start_date = dates[0]
@@ -93,18 +100,12 @@ class Invest:
             last_day = date - datetime.timedelta(days=1)
             if date in self._actions:
                 for action in self._actions[date]:
-
-                    if date not in self._cashflow:
-                        self._cashflow[date] = 0.0
-
                     if action.type == InvestmentActionType.DEPOSIT:
                         current_value += action.value
                         current_principal += action.value
-                        self._cashflow[date] -= action.value
                     elif action.type == InvestmentActionType.WITHDRAW:
                         current_value -= action.value
                         current_principal -= action.value
-                        self._cashflow[date] += action.value
                     elif action.type == InvestmentActionType.UPDATE:
                         current_value = action.value
                     else:
@@ -114,10 +115,48 @@ class Invest:
             self._daily_return_line[date] = \
                 (self._return_line[date] - (self._return_line[last_day] if last_day in self._daily_return_line else 0))
 
-        last_day += datetime.timedelta(days=1)
-        if last_day not in self._cashflow:
-            self._cashflow[last_day] = 0.0
-        self._cashflow[last_day] += self.get_value()
+        # self.update_cashflow()
+
+    def update_cashflow(self):
+        self._cashflow.clear()
+
+        if not self._last_day:
+            return
+        dates = self._actions.keys()
+        start_date = dates[0]
+        end_date = dates[-1]
+        delta = end_date - start_date
+        all_dates = [start_date + datetime.timedelta(days=i) for i in range(delta.days + 1)]
+
+        for date in all_dates:
+            if date in self._actions:
+                for action in self._actions[date]:
+                    if date not in self._cashflow:
+                        self._cashflow[date] = 0.0
+
+                    if action.type == InvestmentActionType.DEPOSIT:
+                        self._cashflow[date] -= action.value
+                    elif action.type == InvestmentActionType.WITHDRAW:
+                        self._cashflow[date] += action.value
+                    elif action.type != InvestmentActionType.UPDATE:
+                        raise Exception(f"Unknown action: {action}")
+
+        if self._last_day not in self._cashflow:
+            self._cashflow[self._last_day] = 0.0
+        self._cashflow[self._last_day] += self.get_value(self._last_day)
+
+        if False:
+            # debug cashflow
+            res_str = ""
+            date = datetime.date.today() - datetime.timedelta(days=7)
+            while date <= datetime.date.today():
+                if date in self._cashflow:
+                    res_str += f"{self._cashflow[date]:>10.2f}"
+                else:
+                    res_str += f"{0:>10.2f}"
+                date += datetime.timedelta(days=1)
+            res_str += "  " + self.get_name()
+            print(res_str)
 
     def debug_print(self):
         print(f"{self._id}-{self._name}")

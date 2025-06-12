@@ -78,11 +78,12 @@ class CliRepl(cmd.Cmd):
         cmd_name = parts[0]
         if cmd_name in self.available_commands:
             method = getattr(self.instance, cmd_name)
-            # try:
-            args = self._parse_args(method, parts[1:])
-            result = method(**args)
-            # except Exception as e:
-            #     print(f"Params Error: {e}")
+            args_res = self._parse_args(method, parts[1:])
+            if args_res["status"]:
+                args = args_res["arg"]
+                result = method(**args)
+            else:
+                return
         else:
             print(f"Unknown command: {cmd_name}")
 
@@ -98,8 +99,9 @@ class CliRepl(cmd.Cmd):
                 else:
                     args[param.name] = value
             except ValueError:
-                raise TypeError(f"Argument {param.name} must be of type {param.annotation}")
-        return args
+                print("Invalid parameter")
+                return {"status": False}
+        return {"status": True, "arg": args}
 
     def _dump_log(self, line):
         log_dir = os.path.dirname(self.logfile)
@@ -113,4 +115,3 @@ class CliRepl(cmd.Cmd):
                 f.write(log_entry)
         except Exception as e:
             print(f"Error, failed to log command: {e}")
-

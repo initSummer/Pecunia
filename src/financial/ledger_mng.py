@@ -87,8 +87,6 @@ class LedgerManager:
 
     def update(self) -> None:
         for ledger in self._ledgers.values():
-            for invest in ledger.get_invest_list():
-                invest.update()
             ledger.update()
 
     def convert_to_json(self):

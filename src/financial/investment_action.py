@@ -1,6 +1,5 @@
 from .financial_types import InvestmentActionType
 import datetime
-import json
 
 
 class InvestmentAction:

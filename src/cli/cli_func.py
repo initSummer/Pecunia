@@ -439,6 +439,11 @@ class CliFunc:
             print("No invest found")
             return
         action_type = InvestmentActionType(action_type_name)
+        try:
+            value = float(value)
+        except ValueError:
+            print(f"Invalid value {value}")
+            return
         self._ledger_mng.add_investment_action(self._selected_ledger_id, invest_id,
                                                year, month, day,
                                                action_type, value)
@@ -487,7 +492,7 @@ class CliFunc:
         if log_num is None:
             log_num = DEFAULT_VALUE_LOG_NUM
         for date in invest.get_value_line().keys()[-log_num:]:
-            string = f"{date:<10s}"
+            string = f"{date.strftime("%Y-%m-%d"):<10s}"
             string += f"{self._caf(ledger.get_value(), invest.get_value(date)):>15.2f}"
             string += f"{self._caf(ledger.get_value(), invest.get_return(date)):>15.2f}"
             string += f"{self._caf(ledger.get_value(), invest.get_daily_return(date)):>15.2f}"
@@ -552,9 +557,9 @@ class CliFunc:
         tagr = f"|tagr: {ledger.tagr() * 100:.2f}%"
         tagr += f"{" " * (len(line) - len(tagr) - 1)}|"
         print(tagr)
-        tagr = f"|    week: {ledger.tagr(last_date - datetime.timedelta(days=7), last_date) * 100:.2f}%, "
-        tagr += f"month: {ledger.tagr(last_date - datetime.timedelta(days=30), last_date) * 100:.2f}%, "
-        tagr += f"year: {ledger.tagr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%"
+        tagr = f"|    year: {ledger.tagr(last_date - datetime.timedelta(days=365), last_date) * 100:.2f}%, "
+        tagr += f"3year: {ledger.tagr(last_date - datetime.timedelta(days=(365*3)), last_date) * 100:.2f}%, "
+        tagr += f"5year: {ledger.tagr(last_date - datetime.timedelta(days=(365*5)), last_date) * 100:.2f}%"
         tagr += f"{" " * (len(line) - len(tagr) - 1)}|"
         print(tagr)
 

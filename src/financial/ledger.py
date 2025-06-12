@@ -22,6 +22,9 @@ class Ledger:
 
         self._cashflow: SortedDict[datetime.date, float] = SortedDict()
 
+    def get_last_day(self) -> datetime.date:
+        return self._value_line.keys()[-1]
+
     def get_id(self) -> int:
         return self._id
 
@@ -92,6 +95,14 @@ class Ledger:
         self._invests[invest_id].delete_last_action()
 
     def update(self) -> None:
+        debug = False
+        if self._id == 0:
+            # debug = True
+            pass
+
+        for invest in self.get_invest_list():
+            invest.update()
+
         for invest in self._invests.values():
             invest.set_owner_ledger_id(self._id)
         # sort invest
@@ -124,7 +135,6 @@ class Ledger:
         # step 1: get daily return
         #         get cashflow
         self._daily_return_line.clear()
-        self._cashflow.clear()
         self._value_line.clear()
         self._return_line.clear()
         for invest in self._invests.values():
@@ -132,11 +142,6 @@ class Ledger:
                 if not date in self._daily_return_line:
                     self._daily_return_line[date] = 0.0
                 self._daily_return_line[date] += value
-
-            for date, value in invest.get_cashflow().items():
-                if not date in self._cashflow:
-                    self._cashflow[date] = 0.0
-                self._cashflow[date] += value
 
         # step 2: get value
         for date in self._daily_return_line.keys():
@@ -151,7 +156,48 @@ class Ledger:
             ledger_return += self._daily_return_line[date]
             self._return_line[date] = ledger_return
 
+        # step 4: set inveset last_day
+        for invest in self.get_invest_list():
+            invest.set_last_day(self._value_line.keys()[-1])
+            invest.update_cashflow()
+
+        # step 5: udpate cashflow
+        self._cashflow.clear()
+        for invest in self._invests.values():
+            for date, value in invest.get_cashflow().items():
+                if date not in self._cashflow:
+                    self._cashflow[date] = 0.0
+                self._cashflow[date] += value
+
+
+        if debug:
+            # debug cashflow
+            res_str = ""
+            date = datetime.date.today() - datetime.timedelta(days=7)
+            while date <= datetime.date.today():
+                if date in self._cashflow:
+                    res_str += f"{self._cashflow[date]:>10.2f}"
+                else:
+                    res_str += f"{0:>10.2f}"
+                date += datetime.timedelta(days=1)
+            res_str += "  " + self.get_name()
+            print(res_str)
+
+            res_str = ""
+            date = datetime.date.today() - datetime.timedelta(days=7)
+            while date <= datetime.date.today():
+                res_str += f"{date.strftime("%m%d"):>10s}"
+                date += datetime.timedelta(days=1)
+            res_str += "  " + self.get_name()
+            print(res_str)
+
     def xirr(self, start_day: datetime.date = None, end_day: datetime.date = None) -> float:
+        debug = False
+        if end_day and start_day:
+            if (end_day - start_day).days == 7:
+                # debug = True
+                pass
+
         if start_day and end_day and start_day >= end_day:
             return float('nan')
 
@@ -173,11 +219,11 @@ class Ledger:
                     cashflow[end_day] = 0.0
                 if end_day != self._value_line.keys()[-1]:
                     cashflow[end_day] = self.get_value(end_day)
-        # if end_day and start_day:
-        #     if (end_day - start_day).days <= 7:
-        #         print(start_day, end_day)
-        #         for date, value in cashflow.items():
-        #             print(date, value)
+
+        if debug:
+            print(start_day, end_day)
+            for date, value in cashflow.items():
+                print(date, value)
 
         return util.xirr(cashflow)
 
